@@ -43,7 +43,6 @@ class GameController {
         };
         document.onkeyup = key => {
             if (key.code === 'Space') {
-                console.log('Unforce')
                 this.renderer.unforceSpeed();
             }
         }
@@ -56,11 +55,11 @@ class Renderer {
         this.context = context;
         this.snakeArray = [];
         this.food = null;
-        this.speedBuffer = null;
         this.speed = 150;
         this.size = 10;
         this.points = 0;
         this.canInteract = true;
+        this.over = false;
 
         this.onInit();
     }
@@ -123,28 +122,41 @@ class Renderer {
         }
     }
     forceSpeed() {
-        this.speedBuffer = this.speed;
-        this.speed = 1000 / 24;
+        this.speed = 70;
     }
     unforceSpeed() {
-        this.speed = 150;
+        this.speed = 140;
     }
 
     _render() {
-        this.canInteract = true;
-        this._refreshScene();
-        this._moveSnake();
-        this._checkFood();
-        setTimeout(() => this._render(), this.speed);
+        if (!this.over) {
+            this.canInteract = true;
+            this._refreshScene();
+            this._moveSnake();
+            this._checkFood();
+            setTimeout(() => this._render(), this.speed);
+        } else {
+            this.context.font = "30px Arial";
+            this.context.strokeText("Game Over", 10, 50);
+        }
     }
     _refreshScene() {
         this.context.clearRect(0, 0, this.cWidth, this.cHeight);
     }
     _initSnake() {
-        this.snakeArray.push(new SnakeFrag(0, 0, 'right', this.size));
+        this.snakeArray.push(new SnakeFrag(0, 0, 'right', this.size, this.cWidth, this.cHeight));
     }
     _moveSnake() {
         for (let i = 0; i < this.snakeArray.length; i++) {
+            for (let j = this.snakeArray.length - 1; j >= 0; j--) {
+                if (this.snakeArray[i].x === this.snakeArray[j].x && this.snakeArray[i].y === this.snakeArray[j].y) {
+                    if (this.snakeArray[i] !== this.snakeArray[j]) {
+                        console.log('Collision');
+                        this.over = true;
+                        return;
+                    }
+                }
+            }
             this.snakeArray[i].moveFrag();
             this.snakeArray[i].checkSchedule();
         }
@@ -152,9 +164,15 @@ class Renderer {
     }
     _drawSnake() {
         for (let i = 0; i < this.snakeArray.length; i++) {
-            this.context.fillStyle = '#4188ff';
-            this.context.strokeStyle = '#222';
-            this.context.fillRect(this.snakeArray[i].x, this.snakeArray[i].y, this.size, this.size);
+            if (i === 0) {
+                this.context.fillStyle = '#3764d7';
+                this.context.fillRect(this.snakeArray[i].x, this.snakeArray[i].y, this.size, this.size);
+                this.context.rect(this.snakeArray[i].x, this.snakeArray[i].y, this.size, this.size);
+            } else {
+                this.context.fillStyle = '#4188ff';
+                this.context.fillRect(this.snakeArray[i].x, this.snakeArray[i].y, this.size, this.size);
+                this.context.rect(this.snakeArray[i].x, this.snakeArray[i].y, this.size, this.size);
+            }
         }
     }
     _createFood() {
@@ -188,7 +206,9 @@ class Renderer {
                 lastSnakeFrag.x,
                 lastSnakeFrag.y + this.size,
                 lastSnakeFrag.dir,
-                this.size
+                this.size,
+                this.cWidth,
+                this.cHeight
             ));
             this.snakeArray[this.snakeArray.length - 1].schedule = lastSnakeSchedule;
         } else if (lastSnakeFrag.dir === 'right') {
@@ -196,7 +216,9 @@ class Renderer {
                 lastSnakeFrag.x - this.size,
                 lastSnakeFrag.y,
                 lastSnakeFrag.dir,
-                this.size
+                this.size,
+                this.cWidth,
+                this.cHeight
             ));
             this.snakeArray[this.snakeArray.length - 1].schedule = lastSnakeSchedule;
         } else if (lastSnakeFrag.dir === 'down') {
@@ -204,7 +226,9 @@ class Renderer {
                 lastSnakeFrag.x,
                 lastSnakeFrag.y - this.size,
                 lastSnakeFrag.dir,
-                this.size
+                this.size,
+                this.cWidth,
+                this.cHeight
             ));
             this.snakeArray[this.snakeArray.length - 1].schedule = lastSnakeSchedule;
         } else {
@@ -212,7 +236,9 @@ class Renderer {
                 lastSnakeFrag.x + this.size,
                 lastSnakeFrag.y,
                 lastSnakeFrag.dir,
-                this.size
+                this.size,
+                this.cWidth,
+                this.cHeight
             ));
             this.snakeArray[this.snakeArray.length - 1].schedule = lastSnakeSchedule;
         }
@@ -225,23 +251,41 @@ class SnakeFood {
     }
 }
 class SnakeFrag {
-    constructor(spawnX, spawnY, direction, size) {
+    constructor(spawnX, spawnY, direction, size, cWidth, cHeight) {
         this.x = spawnX;
         this.y = spawnY;
         this.dir = direction;
         this.size = size;
         this.schedule = [];
+        this.cWidth = cWidth;
+        this.cHeigh = cHeight;
     }
 
     moveFrag() {
         if (this.dir === 'right') {
-            this.x += this.size;
+            if (this.x >= this.cWidth - this.size) {
+                this.x = 0;
+            } else {
+                this.x += this.size;
+            }
         } else if (this.dir === 'left') {
-            this.x -= this.size;
+            if (this.x <= 0) {
+                this.x = this.cWidth;
+            } else {
+                this.x -= this.size;
+            }
         } else if (this.dir === 'up') {
-            this.y -= this.size;
+            if (this.y <= 0) {
+                this.y = this.cHeigh;
+            } else {
+                this.y -= this.size;
+            }
         } else {
-            this.y += this.size;
+            if (this.y >= this.cHeigh - this.size) {
+                this.y = 0;
+            } else {
+                this.y += this.size;
+            }
         }
     }
     checkSchedule() {
